@@ -1,9 +1,18 @@
 import os
 import xlwt
-from openpyxl import load_workbook
-import openpyxl
 import os
 
+
+def getvideo_nameandflamenum(tru_img_path):
+    """
+    return: video_inf, like {'place1_whitecane01.mp4':379, }
+    找到该视频最后一帧的序号，即需要的file_num。通过这个来确定视频一共有多少帧。
+    """
+    video_inf = {}
+    for file in os.listdir(tru_img_path):
+        video_inf[file.split('mp4_')[0] + 'mp4'] = int(file.split('mp4_')[1][:3])
+    
+    return video_inf
 
 def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, unit_size, a, b, 
         conf_thre=0.1, iou_thre=0.1):
@@ -54,17 +63,10 @@ def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, un
             # this flame actuallty has whitecane or not.
             if os.path.exists(tru_txt_path):
                 flame_truth_num += 1
-            # pre label必须存在且不为空，才能说明yolo检测出目标了。
-            if os.path.exists(pre_txt_path):
-                with open(pre_txt_path, '+r') as f:
-                    t = f.read()
-                # yolo检测出目标，但实际没有。
-                if t and not os.path.exists(tru_txt_path):
-                    flame_pre_num += 1  # 变成FP
-                # yolo检测出目标，且实际有。
-                elif t and os.path.exists(tru_txt_path) and get_iou(tru_txt_path, pre_txt_path, conf_thre) >= iou_thre:
-                    flame_pre_num += 1  # 变成TP必须要正确检测
-  
+                # count the flames in which whitecane is detected 
+                if os.path.exists(pre_txt_path) and get_iou(tru_txt_path, pre_txt_path, conf_thre) >= iou_thre:
+                    flame_pre_num += 1
+    
         # calculate the tp, tn, fp, fn.
         if flame_truth_num >= (unit_size * a) and flame_pre_num >= (unit_size * b):
             tp += 1
@@ -74,7 +76,9 @@ def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, un
             fp += 1       
         elif flame_truth_num < (unit_size * a) and flame_pre_num < (unit_size * b):
             tn += 1
-        
+
+        flame_truth_num = 0
+        flame_pre_num = 0
     return (tp,fp,tn,fn)
 
 def calculate_fscore(tp, tn, fp, fn):
@@ -189,91 +193,104 @@ def get_iou(tru_txt, pre_txt, conf_thre):
 
     return iou
 
-def default_excel(k, conf_thre, iou_thre):
+def calculate_tpfptnfn_k1(tru_txt_path, pre_txt_path, file_pre, file_num, conf_thre=0.8, iou_thre=0.5):
     """
-    write the default form of k-frame excel.
-    :param 
-    :return excel_path
+
+    """
+    # default some varities.
+    tp = 0
+    tn = 0
+    fp = 0
+    fn = 0
+    folder_pre_name = pre_txt_path
+    folder_tru_name = tru_txt_path
+
+
+    for j in range(1, file_num+1):
+        t = 0
+        p = 0
+        if j > 99:
+            txtname = file_pre + '_{}.txt'.format(j)
+        elif 10 <= j <= 99:
+            txtname = file_pre + '_0{}.txt'.format(j)
+        else:
+            txtname = file_pre + '_00{}.txt'.format(j)
+        pre_txt_path = os.path.join(folder_pre_name, txtname)
+        tru_txt_path = os.path.join(folder_tru_name, txtname)
+
+        if os.path.exists(tru_txt_path):
+            t = 1
+            if os.path.exists(pre_txt_path):
+                try:
+                    iou = get_iou(tru_txt_path, pre_txt_path, conf_thre)
+                    if iou > iou_thre:
+                        p = 1
+                except ValueError as ve:
+                    print("A ValueError occurred:", str(ve))
+                    p = 0
+
+        # calculate the tp, tn, fp, fn.
+        if p and t:
+            tp += 1
+        elif p and not t:
+            fp += 1
+        elif not p and t:
+            fn += 1       
+        elif not p and not t:
+            tn += 1
+
+    return (tp,fp,tn,fn)
+
+
+def write_excel(k, results, file_pre):
+    """
+    write the results of k-frame to excel file.
+    :param results: [[k, a, b, f-score],]
+    :return none
     """
     # create 'result' filter
     if not os.path.exists('result'):
         os.mkdir('result')
         
     # default format 
-    workbook = openpyxl.Workbook()
-    worksheet = workbook.worksheets[0]
-    
-    row1 = ['space', 'flame num', 'a', 'b',  'f-score', ' ','weighted average f-score']
-    worksheet.column_dimensions['A'].width = 30
-    worksheet.column_dimensions['B'].width = 15
-    worksheet.column_dimensions['G'].width = 30
+    book = xlwt.Workbook(encoding='utf-8',style_compression=0)
+    sheet = book.add_sheet('k-frame result',cell_overwrite_ok=True)
+    row0 = ['', 'β']
+    row0_1 = [f'{i}' for i in range(1, k+1)]
+    col0 = [f'k={k}']
+    col1 = ['a={}'.format(i) for i in range(1, k+1)]
 
     # write default format
-    for i in range(1, len(row1)+1):
-        worksheet.cell(1, i).value = row1[i-1]
+    for i in range(len(row0)):
+        sheet.write(0, i, row0[i])
+    for i in range(len(row0_1)):
+        sheet.write(0, len(row0) + i, row0_1[i])
+    sheet.write(1, 0, col0[0])
+    for i in range(1, k+1):
+        sheet.write(i, 1, col1[i-1])
+
+    # create a dic to give results the position(row) to write, dic = {(k, a): row,}
+    r = 1
+    dic = {}
+    for i in (k,):
+        for j in range(1, i+1):
+            dic[(i, j)] = r
+            r += 1
+
+    # # write k-frame results
+    for result in results:
+        resk = result[0]
+        resa = result[1]
+        sheet.write(dic[(resk, resa)], result[2]+1, result[3])
     
     # save excel file
-    name = f'(Dayk{k})k-frame_c{conf_thre}i{iou_thre}.xlsx'
-    workbook.save(fr'result/{name}')
-    print('已新建',name,)
-    
-    excel_path = os.path.join('result', name)
-    return excel_path
-
-
-def write_excel(excel, row, space, best_perf, img_num):
-    """
-    打开生成好的excel，每计算出一次结果就记录一次，记得最后关闭进程。
-    :param 
-    :return none
-    """
-        
-    # default format 
-    workbook = load_workbook(excel)
-    worksheet = workbook.worksheets[0]
-
-    # write best performance
-    worksheet.cell(row, 1).value = space
-    worksheet.cell(row, 2).value = img_num
-    for col in range(3, len(best_perf)+3):
-        worksheet.cell(row, col).value = best_perf[col-3]
-    
-    # save excel file
-    workbook.save(excel)
-    print(excel,f'已修改。{space}当a={best_perf[0]},b={best_perf[1]}的时候f值最大,为{best_perf[2]}')
-
-
-def write_average_fscore(excel):
-    """
-    计算所有场景的加权平均f值。
-    :param 
-    :return 
-    """
-        
-    # default format 
-    workbook = load_workbook(excel)
-    worksheet = workbook.worksheets[0]
-    
-    # 计算加权平均f值
-    f = 0
-    num = 0
-    for row in range(2, worksheet.max_row+1):
-        f = f + float(worksheet.cell(row, 2).value) * float(worksheet.cell(row, 5).value)
-        num += float(worksheet.cell(row, 2).value)
-    f = round(f/num, 2)
-    # write f
-    worksheet.cell(2, 7).value = f
-
-    # save excel file
-    workbook.save(excel)
-    print(excel,f'完成计算。平均f值为{f}')
-    print('-----------------------end----------------------------')
+    name = f'(Dayk{k})k-frame_{file_pre}.xls'
+    book.save(fr'result/{name}')
+    print(name,'已保存。')
 
 
 if __name__ == '__main__':
-    # a = get_iou(tru_txt=r'C:\Users\李志卿\datasets\place1\labels\place1_whitecane01.mp4_046.txt', 
-    #         pre_txt=r'D:\白杖实验全部资料\yolov8实验结果\day_row\exp1\labels\place1_whitecane01.mp4_046.txt', 
-    #         conf_thre=0.1)
-    # print(a)
-
-    write_average_fscore(r'result/(Dayk2)k-frame_c0.1i0.1.xlsx')
+    a = get_iou(tru_txt=r'C:\Users\李志卿\datasets\place1\labels\place1_whitecane01.mp4_046.txt', 
+            pre_txt=r'D:\白杖实验全部资料\yolov8实验结果\day_row\exp1\labels\place1_whitecane01.mp4_046.txt', 
+            conf_thre=0.1)
+    print(a)
