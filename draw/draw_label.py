@@ -40,8 +40,8 @@ def draw(img, label):
     
     out_img = os.path.join(out_dir, os.path.basename(img))
 
-    assert cv2.imwrite(out_img, image) , '没有sol_img文件夹！程序结束！'
-    print(f'{out_img}已保存，检测出{len(boxes)}目标！')
+    assert cv2.imwrite(out_img, image) , f'没有{out_dir}文件夹！程序结束！'
+    # print(f'{out_img}已保存，检测出{len(boxes)}目标！')
 
     # 显示图像
     # cv2.imshow('Image', image)
@@ -70,7 +70,10 @@ if __name__ == "__main__":
         out_dir = f'D:\白杖实验全部资料\yolov8实验结果\day_yolov8_sol\{space}\images'
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
-
+        else:
+            continue
+        
+        print(f'正在绘制{space}的图片')
         for img in os.listdir(img_folder):
             label_name = img[:-4] + '.txt'
             label_path = fr'D:\白杖实验全部资料\yolov8实验结果\day_yolov8_sol\{space}\labels\{label_name}'
@@ -78,3 +81,22 @@ if __name__ == "__main__":
                 print(img,'没有检测出白杖')
             else:
                 draw(img, label_path)
+        print(f"{space}的图片已绘制完成")
+
+
+    # 单独绘制
+    # space = 'place2_whitecane01'
+
+    # img_folder = os.path.join(img_root_path, space, 'images')
+    # out_dir = f'D:\白杖实验全部资料\yolov8实验结果\day_yolov8_sol\{space}\images'
+    # if not os.path.exists(out_dir):
+    #     os.mkdir(out_dir)
+
+    # for img in os.listdir(img_folder):
+    #     label_name = img[:-4] + '.txt'
+    #     label_path = fr'D:\白杖实验全部资料\yolov8实验结果\day_yolov8_sol\{space}\labels\{label_name}'
+    #     if not os.path.exists(label_path):
+    #         print(img,'没有检测出白杖')
+    #     else:
+    #         draw(img, label_path)
+    # print(f"{space}的图片已绘制完成")

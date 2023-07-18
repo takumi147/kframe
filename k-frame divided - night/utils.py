@@ -27,6 +27,8 @@ def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, un
     unit_num = file_num // unit_size
     folder_pre_name = pre_txt_path
     folder_tru_name = tru_txt_path
+    # start = os.listdir(tru_txt_path)[0][-5]
+
 
     # for each unit.
     # use flame_truth_num and flame_pre_num to calculate the tp, tn, fp, fn.
@@ -38,7 +40,7 @@ def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, un
         
         # for each flame.
         # iterate an unit, and classify which status(tp, tn, fp, fn) it is.
-        for j in range(1, unit_size+1):
+        for j in range(1, unit_size + 1):
             
             # find the label txt. 
             if (j + i * unit_size) > 99:
@@ -58,10 +60,10 @@ def calculate_tpfptnfn_kframe(tru_txt_path, pre_txt_path, file_pre, file_num, un
             if os.path.exists(pre_txt_path):
                 with open(pre_txt_path, '+r') as f:
                     t = f.read()
-                # yolo检测出目标，但实际没有。
+                # yolo检测出错误的目标，实际没有。
                 if t and not os.path.exists(tru_txt_path):
                     flame_pre_num += 1  # 变成FP
-                # yolo检测出目标，且实际有。
+                # yolo检测出正确目标，且实际有。
                 elif t and os.path.exists(tru_txt_path) and get_iou(tru_txt_path, pre_txt_path, conf_thre) >= iou_thre:
                     flame_pre_num += 1  # 变成TP必须要正确检测
   
@@ -189,7 +191,7 @@ def get_iou(tru_txt, pre_txt, conf_thre):
 
     return iou
 
-def default_excel(k, conf_thre, iou_thre):
+def default_excel(dayornight, k, conf_thre, iou_thre):
     """
     write the default form of k-frame excel.
     :param 
@@ -198,50 +200,44 @@ def default_excel(k, conf_thre, iou_thre):
     # create 'result' filter
     if not os.path.exists('result'):
         os.mkdir('result')
-        
-    # default format 
+    
+     # default format 
     workbook = openpyxl.Workbook()
     worksheet = workbook.worksheets[0]
     
-    row1 = ['space', 'flame num', 'a', 'b',  'f-score', ' ','weighted average f-score']
-    worksheet.column_dimensions['A'].width = 30
-    worksheet.column_dimensions['B'].width = 15
-    worksheet.column_dimensions['G'].width = 30
+    row1 = [f'β={i}' for i in range(1, k+1)]
+    col1 = [f'α={i}' for i in range(1, k+1)]
 
     # write default format
-    for i in range(1, len(row1)+1):
-        worksheet.cell(1, i).value = row1[i-1]
+    for i in range(len(row1)):
+        worksheet.cell(1, i+2).value = row1[i]
+    for i in range(len(col1)):
+        worksheet.cell(i+2, 1).value = col1[i]
     
     # save excel file
-    name = f'(Dayk{k})k-frame_c{conf_thre}i{iou_thre}.xlsx'
+    name = f'({dayornight}k{k})k-frame_c{conf_thre}i{iou_thre}.xlsx'
     workbook.save(fr'result/{name}')
-    print('已新建',name,)
+    print('已新建',name)
     
     excel_path = os.path.join('result', name)
     return excel_path
 
-
-def write_excel(excel, row, space, best_perf, img_num):
+def write_excel_by_row(excel, res):
     """
-    打开生成好的excel，每计算出一次结果就记录一次，记得最后关闭进程。
-    :param 
+    write the results of k-frame to excel file.
+    :param results: [[k, a, b, f-score],]
     :return none
     """
-        
-    # default format 
+
     workbook = load_workbook(excel)
     worksheet = workbook.worksheets[0]
 
-    # write best performance
-    worksheet.cell(row, 1).value = space
-    worksheet.cell(row, 2).value = img_num
-    for col in range(3, len(best_perf)+3):
-        worksheet.cell(row, col).value = best_perf[col-3]
+    # write k-frame results
+    for result in res:
+        worksheet.cell(result[1]+1, result[2]+1).value = result[3]
     
     # save excel file
     workbook.save(excel)
-    print(excel,f'已修改。{space}当a={best_perf[0]},b={best_perf[1]}的时候f值最大,为{best_perf[2]}')
-
 
 def write_average_fscore(excel):
     """
@@ -271,9 +267,5 @@ def write_average_fscore(excel):
 
 
 if __name__ == '__main__':
-    # a = get_iou(tru_txt=r'C:\Users\李志卿\datasets\place1\labels\place1_whitecane01.mp4_046.txt', 
-    #         pre_txt=r'D:\白杖实验全部资料\yolov8实验结果\day_row\exp1\labels\place1_whitecane01.mp4_046.txt', 
-    #         conf_thre=0.1)
-    # print(a)
-
-    write_average_fscore(r'result/(Dayk2)k-frame_c0.1i0.1.xlsx')
+    excel = default_excel('day', 4, 0.1, 0.1)
+    write_excel_by_row(excel, [[4,2,3,0.6]])

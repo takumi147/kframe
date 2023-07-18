@@ -26,10 +26,10 @@ def main(conf_thre, iou_thre, k):
                 for video, flamenum in video_inf.items():
                     tpfptnfn = calculate_tpfptnfn_kframe(tru_txt_path=tru_txt_path, pre_txt_path=pre_txt_path, file_pre=video,
                     file_num=flamenum, unit_size=k, a=a/k, b=b/k, conf_thre=conf_thre, iou_thre=iou_thre)
-                    tp = tpfptnfn[0]
-                    fp = tpfptnfn[1]
-                    tn = tpfptnfn[2]
-                    fn = tpfptnfn[3]
+                    tp += tpfptnfn[0]
+                    fp += tpfptnfn[1]
+                    tn += tpfptnfn[2]
+                    fn += tpfptnfn[3]
             fscore = calculate_fscore(tp, tn, fp, fn)
             res.append([k,a,b,fscore])
             print(fr'k:{k},a:{a}/{k},b:{b}/{k}, over')
@@ -78,12 +78,12 @@ if __name__ == '__main__':
     #         print(f'start >>> k:{k}，c:{conf_thre}')
     #         main(conf_thre, k, size, seta)
 
-    with ThreadPoolExecutor(max_workers=len(k_list)) as pool:
-        for k in k_list:
-            for conf_thre in np.arange(0.1, 0.2, 0.1):
-                conf_thre = round(conf_thre, 1)
-                print(f'start >>> k:{k}，c:{conf_thre}')
-                pool.submit(main, *(conf_thre, iou_thre, k))
+    # with ThreadPoolExecutor(max_workers=len(k_list)) as pool:
+    #     for k in k_list:
+    #         for conf_thre in np.arange(0.1, 0.2, 0.1):
+    #             conf_thre = round(conf_thre, 1)
+    #             print(f'start >>> k:{k}，c:{conf_thre}')
+    #             pool.submit(main, *(conf_thre, iou_thre, k))
 
     
-    # maink1(0.1, 0.1)
+    maink1(0.1, 0.1)
