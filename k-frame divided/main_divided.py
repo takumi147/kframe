@@ -22,7 +22,7 @@ def main(k, conf_thre, iou_thre):
                 img_num = len(os.listdir(os.path.join(img_folder, space, 'images')))
 
                 tru_txt_folder = fr'C:\Users\李志卿\datasets\day\{space}\labels'
-                pre_txt_folder = fr'D:\白杖实验全部资料\yolov8实验结果\day_yolov8_sol\{space}\labels'
+                pre_txt_folder = fr'D:\白杖实验全部资料\yolov5实验结果\day\{space}\labels'
 
                 tpfptnfn = calculate_tpfptnfn_kframe(tru_txt_path=tru_txt_folder, pre_txt_path=pre_txt_folder, file_pre=space+'.mp4',
                 file_num=img_num, unit_size=k, a=a/k, b=b/k, conf_thre=conf_thre, iou_thre=iou_thre)
@@ -45,7 +45,7 @@ def main(k, conf_thre, iou_thre):
         print(f'k为{k}, a为{a}的一行数据已经写入。')
 
 if __name__ == '__main__':
-    k_list = (60, 90, 120, 150)
+    k_list = (150,)
     iou_thre = 0.1
 
     with ThreadPoolExecutor(max_workers=len(k_list)) as pool:

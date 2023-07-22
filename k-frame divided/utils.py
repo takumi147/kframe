@@ -201,7 +201,14 @@ def default_excel(dayornight, k, conf_thre, iou_thre):
     if not os.path.exists('result'):
         os.mkdir('result')
     
-     # default format 
+    name = f'({dayornight}k{k})k-frame_c{conf_thre}i{iou_thre}.xlsx'
+    excel_path = os.path.join('result', name)
+
+    if os.path.exists(fr'result/{name}'):
+        print('将在已有的文件上进行修改')
+        return excel_path
+
+    # default format 
     workbook = openpyxl.Workbook()
     worksheet = workbook.worksheets[0]
     
@@ -215,11 +222,9 @@ def default_excel(dayornight, k, conf_thre, iou_thre):
         worksheet.cell(i+2, 1).value = col1[i]
     
     # save excel file
-    name = f'({dayornight}k{k})k-frame_c{conf_thre}i{iou_thre}.xlsx'
     workbook.save(fr'result/{name}')
     print('已新建',name)
-    
-    excel_path = os.path.join('result', name)
+
     return excel_path
 
 def write_excel_by_row(excel, res):
